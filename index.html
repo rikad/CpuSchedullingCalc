@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>CPU Scheduling Calculation</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style type="text/css">
+
+	body {
+		padding: 10px;
+		text-align: center;
+	}
+
+	* { text-align: center }
+
+	table {		
+	    border-collapse: collapse;
+	    width: 80%;
+	}
+	.input td,.hasil td{
+		padding: 0.5em;
+		border: 1px solid black;
+	}
+
+	input, select {
+		width: 90%
+	}
+
+</style>
+</head>
+
+<body>
+
+<h1>CPU Scheduling Calculation</h1>
+<p>
+	(10116908) Rikad Fauzi Alawi 
+	<br> (1011690) Arman Nugraha
+	<br> (1011690) Heruwin S. Tambunan
+	<br> (1011690) Indra Krishna R
+</p>
+<hr>
+
+<table class="input" align="center">
+	<tr><th colspan="3">Proccess<th></tr>
+	<tr style="border:1px solid black"><td>Proses</td><td>Datang</td><td>Waktu Proses</td></tr>	
+	<tr><td>A</td><td><input class="inpProses" type="number" value="0"></td><td><input class="inpProses" type="number" value="2"></td></tr>
+	<tr><td>B</td><td><input class="inpProses" type="number" value="1"></td><td><input class="inpProses" type="number" value="3"></td></tr>
+	<tr><td>C</td><td><input class="inpProses" type="number" value="2"></td><td><input class="inpProses" type="number" value="1"></td></tr>
+	<tr><td>D</td><td><input class="inpProses" type="number" value="3"></td><td><input class="inpProses" type="number" value="4"></td></tr>
+	<tr><td>E</td><td><input class="inpProses" type="number" value="4"></td><td><input class="inpProses" type="number" value="2"></td></tr>
+	<tr><th><span id="qDisplay" style="display:none">Q = <input type="number" id="quantum" value="2"></span></th>
+		<th style="padding: 1em">
+			<select id="metode" onchange="isRR()">
+				<option value="0">FCFS</option>
+				<option value="1">SJF</option>
+				<option value="2">SRT</option>
+				<option value="3">RR</option>
+			</select>
+		</th>
+		<th style="padding: 1em">
+			<input type="submit" value="Hitung" onclick="initial()">
+		</th>
+	</tr>
+</table>
+</td>
+
+<hr>
+<canvas id="Chart1"></canvas>
+<hr>
+
+<table class="hasil"align="center" width="100%">
+	<tr><th colspan="6">Analisis<th></tr>
+	<tr><td></td><td>A</td><td>B</td><td>C</td><td>D</td><td>E</td></tr>
+	<tr><td>Waktu Eksekusi</td><td>A</td><td>B</td><td>C</td><td>D</td><td>E</td></tr>
+	<tr><td>Tunggu</td><td>A</td><td>B</td><td>C</td><td>D</td><td>E</td></tr>
+	<tr><td>Turn Around Time</td><td>A</td><td>B</td><td>C</td><td>D</td><td>E</td></tr>
+</table>
+
+</body>
+
+<script src="chart.js"></script>
+<script type="text/javascript">
+
+	var input = document.querySelectorAll('.inpProses');
+	var metode = document.getElementById('metode').value;
+	var quantum = document.getElementById('quantum').value;
+	var prosesData = [];
+	var datasets = [];
+	var maxIteration = 0;
+
+	function isRR() {
+		var display = 'none'
+		metode = document.getElementById('metode').value;
+
+		if (metode == 3) {
+			display = '';  //show
+		}
+
+		document.getElementById('qDisplay').style.display = display;
+	}
+
+	function initial() {
+
+		//set default
+		prosesData = [];
+		datasets = [];
+		maxIteration = 0;
+
+		metode = document.getElementById('metode').value;
+		quantum = document.getElementById('quantum').value;
+
+		var come;
+		var id = 0;
+		input.forEach(function(v,i) {
+
+			//jika nilai datang
+			if (i%2 == 0) come = parseInt(v.value);
+			else {
+				var time = parseInt(v.value);
+				var tmp = { id:id, come:come, time:time , remainingTime:time };
+				prosesData.push(tmp);
+
+				maxIteration += time;
+
+				id++;
+			}
+		});
+
+		// sort by come
+		prosesData.sort(function (a, b) {
+		  return a.come - b.come;
+		});
+
+
+		calculate();
+	}
+
+	function makeDataset(id) {
+		var colorBar = {
+		            data: [0, 0, 0, 0, 0],
+		            backgroundColor: "rgba(63,203,226,1)"
+		        };
+
+		var whiteBar = {
+		            data: [1, 1, 1, 1, 1],
+		            backgroundColor: "white"
+		        };
+
+		colorBar.data[id] = 1;
+		whiteBar.data[id] = 0;
+
+		datasets.push(colorBar);
+		datasets.push(whiteBar);
+	}
+
+	function sortAlgoritma(data) {
+
+		if (metode == '0' || metode == '3') {
+			data.sort(function (a, b) {
+			  return a.come - b.come;
+			});
+		}
+
+		if (metode == '1') {
+			data.sort(function (a, b) {
+			  return a.time - b.time;
+			});
+		}
+
+		if (metode == '2') {
+			data.sort(function (a, b) {
+			  return a.remainingTime - b.remainingTime;
+			});
+		}
+	}
+
+	function calculate() {
+		var register = [];
+		var proses = null;
+		var hasil = [];
+
+		var i = 0;
+		var idx = 0;  //counter for proses which have add to register
+
+		while(true) {
+
+			//input ke register
+			if (prosesData[idx] != undefined && prosesData[idx].come == i) {
+				if (register[0] == undefined || register[register.length-1] != prosesData[idx]) {
+
+					prosesData.forEach(function(v) {
+						if (v.come == i) {
+							register.push(prosesData[idx]);
+							idx++;
+						}
+					});
+
+				}
+			}
+
+			if (proses == null) {
+				sortAlgoritma(register);
+
+				proses = register.shift();
+
+				if (proses.excecutionTime == undefined) {
+					proses.excecutionTime = i;
+					proses.waitTime = proses.excecutionTime-proses.come;
+					proses.aroundTime = proses.waitTime;
+					proses.counter = 0;
+				}
+
+			} else {
+
+				if (metode == 2) { //if SRT
+					sortAlgoritma(register);
+
+					if (proses.remainingTime > register[0]) {
+						register.push(proses);
+						proses = register[0];
+					}
+
+				}
+
+				if (metode == 3 && register.length > 0 ) { //if RR
+					sortAlgoritma(register);
+
+					if (proses.counter == quantum) {
+
+						if (register[0].remainingTime > quantum) {
+							proses.waitTime += quantum;
+							proses.aroundTime += quantum;
+						} else {
+							proses.waitTime += register[0].remainingTime;
+							proses.aroundTime += register[0].remainingTime-1;
+						}
+
+						proses.counter = 0; //set to nol again
+
+						if (proses.remainingTime > 0) {
+							register.push(proses);
+						} else {
+							hasil.push(proses);
+						}
+
+						proses = register.shift();
+
+						if (proses.excecutionTime == undefined) {
+							proses.excecutionTime = i;
+							proses.waitTime = proses.excecutionTime-proses.come;
+							proses.aroundTime = proses.waitTime;
+							proses.counter = 0;
+						}
+
+					}
+
+				}
+
+				makeDataset(proses.id);
+
+				proses.remainingTime = proses.remainingTime - 1;
+				proses.aroundTime++;
+				proses.counter++;
+
+			}
+
+			if (proses.remainingTime <= 0) {
+
+				//remove from proses
+				hasil.push(proses);
+				proses = null;
+
+				if (register.length == 0 ) { break; }
+
+				//add to proses
+				sortAlgoritma(register);
+
+				proses = register.shift();
+
+				if (proses.excecutionTime == undefined) {
+					proses.excecutionTime = i;
+					proses.waitTime = proses.excecutionTime-proses.come;
+					proses.aroundTime = proses.waitTime;
+					proses.counter = 0;
+				}
+
+				if (proses.remainingTime == 1) {
+
+					makeDataset(proses.id);
+
+					proses.remainingTime = proses.remainingTime - 1;
+					proses.aroundTime++;
+					proses.counter++;
+
+					hasil.push(proses);
+					proses = null;
+				}
+
+			}
+
+			// console.log(i + ' '+JSON.stringify(proses));
+
+			if (i == maxIteration + 2) { break; }
+			i++;
+		}
+
+		displayChange(hasil);
+	}
+
+	function displayChange(data) {
+
+		chart();
+
+		var hasil = document.querySelector('.hasil');
+
+		var et = hasil.children[0].children[2].children;
+		var wt = hasil.children[0].children[3].children;
+		var at = hasil.children[0].children[4].children;
+
+		data.sort(function(a,b) {
+			return a.id - b.id;
+		});
+
+		data.forEach(function(v,i) {
+			et.item(i+1).innerHTML = v.excecutionTime;
+			wt.item(i+1).innerHTML = v.waitTime;
+			at.item(i+1).innerHTML = v.aroundTime;
+		});
+	}
+
+	initial();
+
+	function chart() {
+		var barOptions_stacked = {
+		    tooltips: {
+		        enabled: false
+		    },
+		    hover :{
+		        animationDuration:0
+		    },
+		    scales: {
+		        xAxes: [{
+		            ticks: {
+		                beginAtZero:true,
+		                fontFamily: "'Open Sans Bold', sans-serif",
+		                fontSize:11
+		            },
+		            scaleLabel:{
+		                display:false
+		            },
+		            gridLines: {
+		            }, 
+		            stacked: true
+		        }],
+		        yAxes: [{
+		            gridLines: {
+		                display:false,
+		                color: "#fff",
+		                zeroLineColor: "#fff",
+		                zeroLineWidth: 0
+		            },
+		            ticks: {
+		                fontFamily: "'Open Sans Bold', sans-serif",
+		                fontSize:11
+		            },
+		            stacked: true
+		        }]
+		    },
+		    legend:{
+		        display:false
+		    }
+		};
+
+		var ctx = document.getElementById("Chart1");
+		var myChart = new Chart(ctx, {
+		    type: 'horizontalBar',
+		    data: {
+		        labels: ["A", "B", "C", "D" , "E"],		        
+		        datasets: datasets
+		    },
+
+		    options: barOptions_stacked,
+		});
+	}
+
+</script>
+</html>
+
